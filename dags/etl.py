@@ -72,5 +72,5 @@ with DAG('kaggle_extraction_pipeline', start_date=datetime(2023, 1, 1), schedule
         python_callable=transform_function,
         provide_context=True
 )
-    # Kết nối các task
+   
     push_task >> pull_task >> transform_task >> validate_task >> load_task
