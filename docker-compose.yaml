@@ -4,7 +4,7 @@ services:
   airflow:
     image: apache/airflow:2.9.3
     environment:
-      # Nếu muốn thay phiên bản Python/constraints tương ứng, hãy dùng image phù hợp
+      
       - _PIP_ADDITIONAL_REQUIREMENTS=
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - PYTHONPATH=/opt/airflow/scripts
