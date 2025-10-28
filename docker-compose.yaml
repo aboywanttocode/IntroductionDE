@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  airflow:
+    image: apache/airflow:2.9.3
+    environment:
+      # Nếu muốn thay phiên bản Python/constraints tương ứng, hãy dùng image phù hợp
+      - _PIP_ADDITIONAL_REQUIREMENTS=
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - PYTHONPATH=/opt/airflow/scripts
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./scripts:/opt/airflow/scripts
+      - ./plugins:/opt/airflow/plugins
+    ports:
+      - "8081:8080"
+    command: ["standalone"]
+    restart: unless-stopped
