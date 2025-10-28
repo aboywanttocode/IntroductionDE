@@ -2,11 +2,11 @@ def validate_data(**kwargs):
     path = kwargs['ti'].xcom_pull(key='transformed_path', task_ids='transform_task')
     df = pd.read_csv(path)
 
-    # Kiểm tra thiếu dữ liệu
+   
     if df[['Temperature (C)', 'Humidity', 'Wind Speed (km/h)']].isnull().any().any():
         raise ValueError("Missing values detected.")
 
-    # Kiểm tra phạm vi
+   
     if not df['Temperature (C)'].between(-50, 50).all():
         raise ValueError("Temperature out of range.")
 def check_missing_values(df):
