@@ -3,7 +3,6 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.trigger_rule import TriggerRule
 from datetime import datetime
 
-# Import các hàm từ thư mục scripts
 
 
 from scripts.validation import validate_function
