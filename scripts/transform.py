@@ -1,42 +1,74 @@
 import pandas as pd
 import numpy as np
+import os
+from airflow.operators.python import PythonOperator
 
+# ---------------------------------------------------------
+# 1
+# ---------------------------------------------------------
 def clean_weather_data(file_path):
     df = pd.read_csv(file_path)
 
-    # Convert Formatted Date to datetime
-    df['Formatted Date'] = pd.to_datetime(df['Formatted Date'], errors='coerce')
+    
+    if 'Formatted_Date' not in df.columns:
+        raise KeyError("Missing 'Formatted_Date' column in input file.")
 
-    # Drop rows with invalid dates
-    df = df.dropna(subset=['Formatted Date'])
+    # Convert Formatted_Date sang datetime
+    df['Formatted_Date'] = pd.to_datetime(df['Formatted_Date'], errors='coerce')
 
-    # Handle missing/erroneous values in critical columns
+    
+    df = df.dropna(subset=['Formatted_Date'])
+
+   
     critical_cols = ['Temperature (C)', 'Humidity', 'Wind Speed (km/h)']
+    for col in critical_cols:
+        if col not in df.columns:
+            df[col] = np.nan
+
     df[critical_cols] = df[critical_cols].apply(pd.to_numeric, errors='coerce')
     df = df.dropna(subset=critical_cols)
 
-    # Remove duplicates
+    # 
     df = df.drop_duplicates()
 
     return df
-def engineer_features(df):
-    df['Date'] = df['Formatted Date'].dt.date
-    df['Month'] = df['Formatted Date'].dt.to_period('M')
 
-    # Daily averages
+
+# ---------------------------------------------------------
+# 2
+# ---------------------------------------------------------
+def engineer_features(df):
+    
+    df['Formatted_Date'] = pd.to_datetime(df['Formatted_Date'], errors='coerce')
+
+   
+    df = df.dropna(subset=['Formatted_Date'])
+
+   
+    df['Date'] = df['Formatted_Date'].dt.date
+    df['Month'] = df['Formatted_Date'].dt.to_period('M')
+
+    # --- Daily averages ---
     daily_avg = df.groupby('Date')[['Temperature (C)', 'Humidity', 'Wind Speed (km/h)']].mean().reset_index()
 
-    # Monthly mode for Precip Type
+    # --- Monthly mode của Precip Type ---
     def monthly_mode(series):
         mode = series.mode()
-        return mode[0] if len(mode) == 1 else np.nan
+        return mode.iloc[0] if not mode.empty else np.nan
 
-    monthly_mode_df = df.groupby('Month')['Precip Type'].agg(monthly_mode).reset_index()
-    monthly_mode_df.rename(columns={'Precip Type': 'Mode'}, inplace=True)
+    if 'Precip Type' in df.columns:
+        monthly_mode_df = df.groupby('Month')['Precip Type'].agg(monthly_mode).reset_index()
+        monthly_mode_df.rename(columns={'Precip Type': 'Mode'}, inplace=True)
+    else:
+        monthly_mode_df = pd.DataFrame(columns=['Month', 'Mode'])
 
-    # Wind strength categorization (convert km/h to m/s)
+    # 
     def categorize_wind(speed_kmh):
-        speed = speed_kmh / 3.6
+        try:
+            speed = float(speed_kmh) / 3.6
+        except (ValueError, TypeError):
+            return np.nan
+
         if speed <= 1.5: return 'Calm'
         elif speed <= 3.3: return 'Light Air'
         elif speed <= 5.4: return 'Light Breeze'
@@ -53,21 +85,45 @@ def engineer_features(df):
     df['wind_strength'] = df['Wind Speed (km/h)'].apply(categorize_wind)
 
     return df, daily_avg, monthly_mode_df
+
+
+# ---------------------------------------------------------
+# 3️
+# ---------------------------------------------------------
 def calculate_monthly_aggregates(df):
-    df['Month'] = df['Formatted Date'].dt.to_period('M')
-    monthly_avg = df.groupby('Month')[['Temperature (C)', 'Humidity', 'Wind Speed (km/h)', 'Visibility (km)', 'Pressure (millibars)']].mean().reset_index()
+    df['Formatted_Date'] = pd.to_datetime(df['Formatted_Date'], errors='coerce')
+    df = df.dropna(subset=['Formatted_Date'])
+
+    df['Month'] = df['Formatted_Date'].dt.to_period('M')
+
+    # Kiểm tra các cột có tồn tại không trước khi group
+    cols_to_avg = ['Temperature (C)', 'Humidity', 'Wind Speed (km/h)', 'Visibility (km)', 'Pressure (millibars)']
+    existing_cols = [col for col in cols_to_avg if col in df.columns]
+
+    if not existing_cols:
+        raise KeyError("No numeric columns found for monthly aggregation.")
+
+    monthly_avg = df.groupby('Month')[existing_cols].mean().reset_index()
     return monthly_avg
+
+
+# ---------------------------------------------------------
+# 4️
+# ---------------------------------------------------------
 def save_transformed_data(daily_avg, monthly_avg, output_dir='transformed_data'):
-    import os
     os.makedirs(output_dir, exist_ok=True)
     daily_path = os.path.join(output_dir, 'daily_transformed.csv')
     monthly_path = os.path.join(output_dir, 'monthly_transformed.csv')
     daily_avg.to_csv(daily_path, index=False)
     monthly_avg.to_csv(monthly_path, index=False)
     return daily_path, monthly_path
-from airflow.operators.python import PythonOperator
 
+
+# ---------------------------------------------------------
+# 5
+# ---------------------------------------------------------
 def push_transformed_paths(**kwargs):
-    daily_path, monthly_path = kwargs['ti'].xcom_pull(task_ids='transform_task')
-    kwargs['ti'].xcom_push(key='daily_path', value=daily_path)
-    kwargs['ti'].xcom_push(key='monthly_path', value=monthly_path)
+    ti = kwargs['ti']
+    daily_path, monthly_path = ti.xcom_pull(task_ids='transform_task')
+    ti.xcom_push(key='daily_path', value=daily_path)
+    ti.xcom_push(key='monthly_path', value=monthly_path)
