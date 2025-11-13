@@ -42,8 +42,13 @@ import pandas as pd
 
 def load_data_to_sqlite(**kwargs):
     ti = kwargs['ti']
-    daily_path = ti.xcom_pull(key='daily_path', task_ids='validate_task')
-    monthly_path = ti.xcom_pull(key='monthly_path', task_ids='validate_task')
+
+    # Pull paths from the correct task
+    daily_path = ti.xcom_pull(key='daily_path', task_ids='transform_task')
+    monthly_path = ti.xcom_pull(key='monthly_path', task_ids='transform_task')
+
+    if not daily_path or not monthly_path:
+        raise FileNotFoundError(" Daily or monthly transformed file path not found in XCom.")
 
     daily_df = pd.read_csv(daily_path)
     monthly_df = pd.read_csv(monthly_path)
@@ -92,3 +97,4 @@ def load_data_to_sqlite(**kwargs):
 
     conn.commit()
     conn.close()
+    print(f" Data successfully loaded into SQLite from {daily_path} and {monthly_path}")
