@@ -96,7 +96,7 @@ def calculate_monthly_aggregates(df):
 
     df['Month'] = df['Formatted_Date'].dt.to_period('M')
 
-    # Kiểm tra các cột có tồn tại không trước khi group
+    # Check the exist column before group
     cols_to_avg = ['Temperature (C)', 'Humidity', 'Wind Speed (km/h)', 'Visibility (km)', 'Pressure (millibars)']
     existing_cols = [col for col in cols_to_avg if col in df.columns]
 
