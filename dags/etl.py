@@ -29,7 +29,7 @@ def push_file_path_to_xcom(**kwargs):
 # -----------------------------
 def pull_file_path_from_xcom(**kwargs):
     file_path = kwargs['ti'].xcom_pull(key='file_path', task_ids='push_task')
-    print(f"✅ Received file path: {file_path}")
+    print(f" Received file path: {file_path}")
 
 # -----------------------------
 # TRANSFORM FUNCTION
