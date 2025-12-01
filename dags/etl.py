@@ -90,7 +90,7 @@ def extract_data_from_kaggle(**kwargs):
         raise FileNotFoundError(f"cannot see file at {file_path}")
 
     kwargs['ti'].xcom_push(key='file_path', value=file_path)
-    print(f"✅ Extracted data to: {file_path}")
+    print(f" Extracted data to: {file_path}")
 # 2. TRANSFORM FUNCTION (fix data NULL)
 # -----------------------------
 def transform_function(**kwargs):
@@ -149,7 +149,7 @@ def transform_function(**kwargs):
     # Push XCom
     ti.xcom_push(key='daily_path', value=daily_path)
     ti.xcom_push(key='monthly_path', value=monthly_path)
-    print(f"✅ Transformed data saved to: {daily_path} & {monthly_path}")
+    print(f" Transformed data saved to: {daily_path} & {monthly_path}")
 
 # -----------------------------
 # DAG DEFINITION
